@@ -64,13 +64,13 @@ public class BrokerImpl implements Broker, ExchangeListener {
         this.acctManager = acctManager;
         this.exchange = exchange;
 
-        String[] stockTickers = this.exchange.getTickers();
-        orderManagers = new TreeMap<String, OrderManager>();
-
         final OrderProcessor processor = new StockTraderOrderProcessor(acctManager, exchange);
         marketDispatchFilter = new MarketDispatchFilter(exchange.isOpen());
         marketOrders = new OrderQueueImpl<Order>(marketDispatchFilter);
         marketOrders.setOrderProcessor(processor);
+
+        String[] stockTickers = exchange.getTickers();
+        orderManagers = new TreeMap<String, OrderManager>();
 
         final OrderProcessor orderProc = new MoveToMarketQueueProcessor(marketOrders);
         for (String stockTicker : stockTickers) {
@@ -206,7 +206,12 @@ public class BrokerImpl implements Broker, ExchangeListener {
      */
     @Override
     public void placeOrder(StopBuyOrder order) throws BrokerException {
-        orderManagers.get(order.getStockTicker()).queueOrder(order);
+        OrderManager manager = orderManagers.get(order.getStockTicker());
+        if (manager == null) {
+            LOGGER.log(Level.SEVERE, "Unable to retrieve order manager for ticker: " + order.getStockTicker());
+        } else {
+            manager.queueOrder(order);
+        }
     }
 
 
@@ -217,12 +222,17 @@ public class BrokerImpl implements Broker, ExchangeListener {
      */
     @Override
     public void placeOrder(StopSellOrder order) throws BrokerException {
-        orderManagers.get(order.getStockTicker()).queueOrder(order);
+        OrderManager manager = orderManagers.get(order.getStockTicker());
+        if (manager == null) {
+            LOGGER.log(Level.SEVERE, "Unable to retrieve order manager for ticker: " + order.getStockTicker());
+        } else {
+            manager.queueOrder(order);
+        }
     }
 
 
     /**
-     * Close the exchange?
+     * Close the exchange.
      * @throws BrokerException
      */
     @Override
@@ -230,6 +240,8 @@ public class BrokerImpl implements Broker, ExchangeListener {
         try {
             exchange.removeExchangeListener(this);
             acctManager.close();
+            for (OrderManager manager : orderManagers.values()) {
+            }
             orderManagers = null;
         } catch (AccountException e) {
             LOGGER.log(Level.WARNING, "Unable to close account", e);
@@ -266,7 +278,12 @@ public class BrokerImpl implements Broker, ExchangeListener {
      */
     @Override
     public void priceChanged(ExchangeEvent event) {
-        orderManagers.get(event.getTicker()).adjustPrice(event.getPrice());
+        OrderManager manager = orderManagers.get(event.getTicker());
+        if (manager == null) {
+            LOGGER.log(Level.SEVERE, "Unable to retrieve order manager for ticker: " + event.getTicker());
+        } else {
+            manager.adjustPrice(event.getPrice());
+        }
     }
 
     /**

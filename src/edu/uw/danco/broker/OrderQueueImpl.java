@@ -7,6 +7,8 @@ import edu.uw.ext.framework.order.Order;
 
 import java.util.Comparator;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 /**
@@ -17,7 +19,7 @@ import java.util.logging.Logger;
  *
  * A simple OrderQueue implementation backed by a TreeSet.
  */
-public final class OrderQueueImpl<E extends Order> implements OrderQueue<E> {
+public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Runnable {
 
     /** The logger for this class */
     private static final Logger LOGGER = Logger.getLogger(OrderQueueImpl.class.getName());
@@ -31,6 +33,8 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E> {
     /** The dispatch filter used to control dispatching from this queue */
     private OrderDispatchFilter<?, E> filter;
 
+    /** Dispatcher that handles dispatching orders in an executor thread */
+    private ExecutorService dispatcher = Executors.newSingleThreadExecutor();
 
     /**
      * Constructor
@@ -90,13 +94,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E> {
      */
     @Override
     public void dispatchOrders() {
-        Order order = dequeue();
-        while (order != null) {
-            if (orderProcessor != null) {
-                orderProcessor.process(order);
-            }
-            order = dequeue();
-        }
+        dispatcher.execute(this);
     }
 
 
@@ -107,5 +105,20 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E> {
     @Override
     public void setOrderProcessor(final OrderProcessor proc) {
         this.orderProcessor = proc;
+    }
+
+
+    /**
+     * Dispatcher process
+     */
+    @Override
+    public void run() {
+        Order order = dequeue();
+        while (order != null) {
+            if (orderProcessor != null) {
+                orderProcessor.process(order);
+            }
+            order = dequeue();
+        }
     }
 }
