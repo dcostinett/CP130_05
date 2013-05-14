@@ -79,6 +79,7 @@ public class BrokerImpl implements Broker, ExchangeListener {
             orderManager.setOrderProcessor(orderProc);
             orderManagers.put(stockTicker, orderManager);
         }
+        // think about making a view of the HashMap an immutable map?
 
         exchange.addExchangeListener(this);     //when adding self as listener, always do it as the last thing.
     }

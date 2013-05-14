@@ -118,7 +118,7 @@ public class OrderManagerImpl implements OrderManager {
 
 
     /**
-     * Set the StopBuyrderFilter
+     * Set the StopBuyOrderFilter
      * @param stopBuyOrderFilter - the filter
      */
     protected void 	setStopBuyOrderFilter(final OrderDispatchFilter<Integer,StopBuyOrder> stopBuyOrderFilter) {
@@ -127,7 +127,7 @@ public class OrderManagerImpl implements OrderManager {
 
 
     /**
-     * Set t he StopBuyOrder Queue
+     * Set the StopBuyOrder Queue
      * @param stopBuyOrderQueue the queue
      */
     protected void setStopBuyOrderQueue(final OrderQueue<StopBuyOrder> stopBuyOrderQueue) {

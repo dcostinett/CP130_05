@@ -18,6 +18,8 @@ import java.util.logging.Logger;
  * Time: 3:05 PM
  *
  * A simple OrderQueue implementation backed by a TreeSet.
+ *
+ * 05/13 Class notes -- maybe use a BlockingQueue as the backing data set?
  */
 public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Runnable {
 
@@ -34,7 +36,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     private OrderDispatchFilter<?, E> filter;
 
     /** Dispatcher that handles dispatching orders in an executor thread */
-    private ExecutorService dispatcher = Executors.newSingleThreadExecutor();
+    private ExecutorService dispatcher = Executors.newFixedThreadPool(100);
 
     /**
      * Constructor
@@ -104,7 +106,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void setOrderProcessor(final OrderProcessor proc) {
-        this.orderProcessor = proc;
+        orderProcessor = proc;
     }
 
 
