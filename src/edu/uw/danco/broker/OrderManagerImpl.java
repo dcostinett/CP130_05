@@ -14,6 +14,9 @@ import java.util.Comparator;
  * User: dcostinett
  * Date: 4/28/13
  * Time: 2:50 PM
+ *
+ * Maintains queues to different types of orders and requests the execution of orders when price conditions
+ * allow their execution.
  */
 public class OrderManagerImpl implements OrderManager {
 

@@ -4,6 +4,7 @@ import static app.ExchangeFactory.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.junit.Before;
@@ -325,6 +326,8 @@ public final class BrokerTest {
         history = exchange.getExecutionHistory();
 
         if (history.length != MARKET_ORDER_COUNT) {
+            Logger logger = Logger.getLogger(BrokerTest.class.getName());
+            logger.log(Level.SEVERE, String.format("Expected %d, actual %d", MARKET_ORDER_COUNT, history.length));
             fail("Market orders should be processed once the market opens.");
         }
 
