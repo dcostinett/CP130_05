@@ -9,6 +9,8 @@ import edu.uw.ext.framework.broker.OrderManager;
 
 import test.AbstractOrderManagerTest;
 
+import java.util.concurrent.Executors;
+
 /**
  * Concrete subclass of AbstractOrderManagerTest, provides an implementation of
  * createOrderManager which creates  an instance of "my" OrderManager
@@ -28,7 +30,7 @@ public class OrderManagerTest extends AbstractOrderManagerTest {
          * This needs to be an instance of your OrderManager implementation  *
          * class.                                                            *
          *********************************************************************/
-        return new OrderManagerImpl(ticker, initPrice);
+        return new OrderManagerImpl(ticker, initPrice, Executors.newSingleThreadExecutor());
 
     }
 }

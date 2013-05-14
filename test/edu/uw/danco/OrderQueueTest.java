@@ -15,6 +15,9 @@ import edu.uw.ext.framework.order.StopSellOrder;
 
 import test.AbstractOrderQueueTest;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * Concrete subclass of AbstractQueueTest, provides implementations of the 
  * createStopBuyOrderQueue, createStopSellOrderQueue and createAnyOrderQueue
@@ -36,7 +39,9 @@ public class OrderQueueTest extends AbstractOrderQueueTest {
         /*********************************************************************
          * This needs to be an instance of your OrderQueue and Comparator.   *
          *********************************************************************/
-        return new OrderQueueImpl<StopBuyOrder>(StopBuyOrderComparator.INSTANCE, filter);
+        return new OrderQueueImpl<StopBuyOrder>(StopBuyOrderComparator.INSTANCE,
+                                                       filter,
+                                                       Executors.newSingleThreadExecutor());
     }
 
     /**
@@ -53,7 +58,9 @@ public class OrderQueueTest extends AbstractOrderQueueTest {
         /*********************************************************************
          * This needs to be an instance of your OrderQueue and Comparator.   *
          *********************************************************************/
-        return new OrderQueueImpl<StopSellOrder>(StopSellOrderComparator.INSTANCE, filter);
+        return new OrderQueueImpl<StopSellOrder>(StopSellOrderComparator.INSTANCE,
+                                                        filter,
+                                                        Executors.newSingleThreadExecutor());
     }
     
     /**
@@ -69,7 +76,7 @@ public class OrderQueueTest extends AbstractOrderQueueTest {
         /*********************************************************************
          * This needs to be an instance of your OrderQueue.                  *
          *********************************************************************/
-        return new OrderQueueImpl<Order>(filter);
+        return new OrderQueueImpl<Order>(filter, Executors.newFixedThreadPool(8));
     }
 
 }

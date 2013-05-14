@@ -8,6 +8,7 @@ import edu.uw.ext.framework.order.StopBuyOrder;
 import edu.uw.ext.framework.order.StopSellOrder;
 
 import java.util.Comparator;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created with IntelliJ IDEA.
@@ -47,14 +48,18 @@ public class OrderManagerImpl implements OrderManager {
      * @param symbol - the ticker symbol of the stock this instance is manage orders for
      * @param price - the current price of stock to be managed
      */
-    public OrderManagerImpl(final String symbol, final int price) {
+    public OrderManagerImpl(final String symbol, final int price, final ExecutorService dispatcher) {
         this.symbol = symbol;
 
         stopBuyOrderFilter = new StopBuyOrderDispatchFilter(price);
         stopSellOrderFilter = new StopSellOrderDispatchFilter(price);
 
-        stopBuyOrderQueue = new OrderQueueImpl<StopBuyOrder>(StopBuyOrderComparator.INSTANCE, stopBuyOrderFilter);
-        stopSellOrderQueue = new OrderQueueImpl<StopSellOrder>(StopSellOrderComparator.INSTANCE, stopSellOrderFilter);
+        stopBuyOrderQueue = new OrderQueueImpl<StopBuyOrder>(StopBuyOrderComparator.INSTANCE,
+                                                                    stopBuyOrderFilter,
+                                                                    dispatcher);
+        stopSellOrderQueue = new OrderQueueImpl<StopSellOrder>(StopSellOrderComparator.INSTANCE,
+                                                                      stopSellOrderFilter,
+                                                                      dispatcher);
     }
 
 

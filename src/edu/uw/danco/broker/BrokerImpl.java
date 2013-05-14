@@ -14,6 +14,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,11 +47,15 @@ public class BrokerImpl implements Broker, ExchangeListener {
     /** The market order queue */
     private OrderQueue<Order> marketOrders;
 
+    /** The ExecutorService that will process the dispatched orders */
+    final ExecutorService dispatcher;
+
 
     /**
      * Constructor for sub classes
      */
     protected BrokerImpl() {
+        dispatcher = Executors.newFixedThreadPool(100);
     }
 
 
@@ -63,10 +69,14 @@ public class BrokerImpl implements Broker, ExchangeListener {
         this.brokerName = brokerName;
         this.acctManager = acctManager;
         this.exchange = exchange;
+        // each OrderManager has 2 queues, plus we need 2 queues for each market order type,
+        // and we need a thread for each queue
+        final int queueSize = (exchange.getTickers().length * 2) + 4;
+        dispatcher = Executors.newFixedThreadPool(queueSize);
 
         final OrderProcessor processor = new StockTraderOrderProcessor(acctManager, exchange);
         marketDispatchFilter = new MarketDispatchFilter(exchange.isOpen());
-        marketOrders = new OrderQueueImpl<Order>(marketDispatchFilter);
+        marketOrders = new OrderQueueImpl<Order>(marketDispatchFilter, dispatcher);
         marketOrders.setOrderProcessor(processor);
 
         String[] stockTickers = exchange.getTickers();
@@ -75,7 +85,7 @@ public class BrokerImpl implements Broker, ExchangeListener {
         final OrderProcessor orderProc = new MoveToMarketQueueProcessor(marketOrders);
         for (String stockTicker : stockTickers) {
             StockQuote quote = exchange.getQuote(stockTicker);
-            OrderManager orderManager = new OrderManagerImpl(quote.getTicker(), quote.getPrice());
+            OrderManager orderManager = new OrderManagerImpl(quote.getTicker(), quote.getPrice(), dispatcher);
             orderManager.setOrderProcessor(orderProc);
             orderManagers.put(stockTicker, orderManager);
         }
@@ -241,8 +251,7 @@ public class BrokerImpl implements Broker, ExchangeListener {
         try {
             exchange.removeExchangeListener(this);
             acctManager.close();
-            for (OrderManager manager : orderManagers.values()) {
-            }
+            dispatcher.shutdown();
             orderManagers = null;
         } catch (AccountException e) {
             LOGGER.log(Level.WARNING, "Unable to close account", e);

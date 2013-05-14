@@ -7,8 +7,8 @@ import edu.uw.ext.framework.order.Order;
 
 import java.util.Comparator;
 import java.util.TreeSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -17,9 +17,8 @@ import java.util.logging.Logger;
  * Date: 4/28/13
  * Time: 3:05 PM
  *
- * A simple OrderQueue implementation backed by a TreeSet.
+ * A simple OrderQueue implementation backed by a BlockingQueue.
  *
- * 05/13 Class notes -- maybe use a BlockingQueue as the backing data set?
  */
 public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Runnable {
 
@@ -27,7 +26,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     private static final Logger LOGGER = Logger.getLogger(OrderQueueImpl.class.getName());
 
     /** Backing store for orders */
-    private TreeSet<E> queue;
+    private BlockingQueue<E> queue;
 
     /** The processor used during order processing */
     private OrderProcessor orderProcessor;
@@ -36,17 +35,20 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     private OrderDispatchFilter<?, E> filter;
 
     /** Dispatcher that handles dispatching orders in an executor thread */
-    private ExecutorService dispatcher = Executors.newFixedThreadPool(100);
+    private final ExecutorService dispatcher;
 
     /**
      * Constructor
      * @param orderComparator - Comparator to be used for ordering
      * @param filter - the dispatch filter used to control dispatching from this queue
      */
-    public OrderQueueImpl(final Comparator<E> orderComparator, final OrderDispatchFilter<?, E> filter) {
-        queue = new TreeSet<E>(orderComparator);
+    public OrderQueueImpl(final Comparator<E> orderComparator,
+                          final OrderDispatchFilter<?, E> filter,
+                          final ExecutorService dispatcher) {
+        queue = new PriorityBlockingQueue<E>(20, orderComparator);
         this.filter = filter;
-        filter.setOrderQueue(this);
+        this.dispatcher = dispatcher;
+        this.filter.setOrderQueue(this);
     }
 
 
@@ -54,10 +56,11 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      * Constructor
      * @param filter - the dispatch filter used to control dispatching from this queue
      */
-    public OrderQueueImpl(final OrderDispatchFilter<?, E> filter) {
-        queue = new TreeSet<E>();
+    public OrderQueueImpl(final OrderDispatchFilter<?, E> filter, final ExecutorService dispatcher) {
+        queue = new PriorityBlockingQueue<E>(20, OrderComparator.INSTANCE);
         this.filter = filter;
-        filter.setOrderQueue(this);
+        this.dispatcher = dispatcher;
+        this.filter.setOrderQueue(this);
     }
 
 
@@ -81,8 +84,12 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     public E dequeue() {
         E order = null;
         if (!queue.isEmpty()) {
-            if (filter.check(queue.first())) {
-                order = queue.first();
+            if (filter.check(queue.peek())) {
+                try {
+                    order = queue.take();
+                } catch (InterruptedException e) {
+                    LOGGER.log(Level.WARNING, "Interrupted waiting for queue element", e);
+                }
                 queue.remove(order);
             }
         }
