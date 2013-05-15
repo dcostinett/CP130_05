@@ -70,7 +70,9 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void enqueue(final E order) {
-        queue.add(order);
+        if (!queue.contains(order)) {
+            queue.add(order);
+        }
         dispatchOrders();
     }
 
