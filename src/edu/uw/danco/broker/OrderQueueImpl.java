@@ -57,7 +57,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      * @param filter - the dispatch filter used to control dispatching from this queue
      */
     public OrderQueueImpl(final OrderDispatchFilter<?, E> filter, final ExecutorService dispatcher) {
-        queue = new PriorityBlockingQueue<E>(20, OrderComparator.INSTANCE);
+        queue = new PriorityBlockingQueue<E>();
         this.filter = filter;
         this.dispatcher = dispatcher;
         this.filter.setOrderQueue(this);
