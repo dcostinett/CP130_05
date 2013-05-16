@@ -5,6 +5,7 @@ import edu.uw.ext.framework.broker.OrderProcessor;
 import edu.uw.ext.framework.broker.OrderQueue;
 import edu.uw.ext.framework.order.Order;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.concurrent.*;
@@ -72,6 +73,8 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     public void enqueue(final E order) {
         if (!queue.contains(order)) {
             queue.add(order);
+            LOGGER.info("Enqueueing order: " + order.toString());
+            LOGGER.info(Arrays.toString(queue.toArray()));
         }
         dispatchOrders();
     }
@@ -92,7 +95,6 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
                 } catch (InterruptedException e) {
                     LOGGER.log(Level.WARNING, "Interrupted waiting for queue element", e);
                 }
-                queue.remove(order);
             }
         }
         return order;

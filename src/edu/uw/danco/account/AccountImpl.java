@@ -316,7 +316,7 @@ public class AccountImpl implements Account {
         if (accountManager == null) {
             accountManager = m;
         } else {
-            LOGGER.log(Level.INFO, "Attempting to set the account manager, after it has been initialized.");
+            LOGGER.log(Level.FINEST, "Attempting to set the account manager, after it has been initialized.");
         }
     }
 
