@@ -48,14 +48,13 @@ public class BrokerImpl implements Broker, ExchangeListener {
     private OrderQueue<Order> marketOrders;
 
     /** The ExecutorService that will process the dispatched orders */
-    final ExecutorService dispatcher;
+    final ExecutorService dispatcher = Executors.newFixedThreadPool(8);
 
 
     /**
      * Constructor for sub classes
      */
     protected BrokerImpl() {
-        dispatcher = Executors.newFixedThreadPool(8);
     }
 
 
@@ -69,9 +68,6 @@ public class BrokerImpl implements Broker, ExchangeListener {
         this.brokerName = brokerName;
         this.acctManager = acctManager;
         this.exchange = exchange;
-        // each OrderManager has 2 queues, plus we need 2 queues for each market order type,
-        // and we need a thread for each queue
-        dispatcher = Executors.newFixedThreadPool(8);
 
         final OrderProcessor processor = new StockTraderOrderProcessor(acctManager, exchange);
         marketDispatchFilter = new MarketDispatchFilter(exchange.isOpen());
