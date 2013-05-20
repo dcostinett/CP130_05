@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,6 +39,8 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
 
     /** Dispatcher that handles dispatching orders in an executor thread */
     private final ExecutorService dispatcher;
+
+    private Lock lock = new ReentrantLock();
 
     /**
      * Constructor
@@ -71,12 +75,18 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void enqueue(final E order) {
-        if (!queue.contains(order)) {
-            queue.add(order);
-            LOGGER.info("Enqueueing order: " + order.toString());
-            LOGGER.info(Arrays.toString(queue.toArray()));
+        try {
+            boolean locked = lock.tryLock();
+            lock.lock();
+            if (!queue.contains(order)) {
+                queue.add(order);
+                LOGGER.info("Enqueueing order: " + order.toString());
+                LOGGER.info(Arrays.toString(queue.toArray()));
+            }
+            dispatchOrders();
+        } finally {
+            lock.unlock();
         }
-        dispatchOrders();
     }
 
 
@@ -88,14 +98,19 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     @Override
     public E dequeue() {
         E order = null;
-        if (!queue.isEmpty()) {
-            if (filter.check(queue.peek())) {
-                try {
-                    order = queue.take();
-                } catch (InterruptedException e) {
-                    LOGGER.log(Level.WARNING, "Interrupted waiting for queue element", e);
+        try {
+            lock.lock();
+            if (!queue.isEmpty()) {
+                if (filter.check(queue.peek())) {
+                    try {
+                        order = queue.take();
+                    } catch (InterruptedException e) {
+                        LOGGER.log(Level.WARNING, "Interrupted waiting for queue element", e);
+                    }
                 }
             }
+        } finally {
+            lock.unlock();
         }
         return order;
     }
