@@ -7,7 +7,6 @@ import edu.uw.ext.framework.order.Order;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.TreeSet;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -40,6 +39,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     /** Dispatcher that handles dispatching orders in an executor thread */
     private final ExecutorService dispatcher;
 
+    // ** Lock to protect access to queue while modifying queue data */
     private Lock lock = new ReentrantLock();
 
     /**
@@ -75,13 +75,10 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void enqueue(final E order) {
+        lock.lock();
         try {
-            boolean locked = lock.tryLock();
-            lock.lock();
             if (!queue.contains(order)) {
                 queue.add(order);
-                LOGGER.info("Enqueueing order: " + order.toString());
-                LOGGER.info(Arrays.toString(queue.toArray()));
             }
             dispatchOrders();
         } finally {
@@ -98,8 +95,8 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     @Override
     public E dequeue() {
         E order = null;
+        lock.lock();
         try {
-            lock.lock();
             if (!queue.isEmpty()) {
                 if (filter.check(queue.peek())) {
                     try {
