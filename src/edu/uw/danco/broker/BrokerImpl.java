@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,7 +49,7 @@ public class BrokerImpl implements Broker, ExchangeListener {
     private OrderQueue<Order> marketOrders;
 
     /** The ExecutorService that will process the dispatched orders */
-    final ExecutorService dispatcher = Executors.newFixedThreadPool(8);
+    final ExecutorService dispatcher = Executors.newFixedThreadPool(32);
 
 
     /**
@@ -244,9 +245,14 @@ public class BrokerImpl implements Broker, ExchangeListener {
     @Override
     public void close() throws BrokerException {
         try {
+            dispatcher.shutdown();
+            try {
+                dispatcher.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                LOGGER.log(Level.WARNING, "Queue was not shutdown within 1 econd.", e);
+            }
             exchange.removeExchangeListener(this);
             acctManager.close();
-            dispatcher.shutdown();
             orderManagers = null;
         } catch (AccountException e) {
             LOGGER.log(Level.WARNING, "Unable to close account", e);

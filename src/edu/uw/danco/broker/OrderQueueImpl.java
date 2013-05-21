@@ -5,9 +5,9 @@ import edu.uw.ext.framework.broker.OrderProcessor;
 import edu.uw.ext.framework.broker.OrderQueue;
 import edu.uw.ext.framework.order.Order;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -29,6 +29,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
 
     /** Backing store for orders */
     private BlockingQueue<E> queue;
+    // can continue to use a TreeSt
 
     /** The processor used during order processing */
     private OrderProcessor orderProcessor;
@@ -40,7 +41,11 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     private final ExecutorService dispatcher;
 
     // ** Lock to protect access to queue while modifying queue data */
-    private Lock lock = new ReentrantLock();
+    private final Lock queuelock = new ReentrantLock();
+
+
+    /**  */
+    private AtomicBoolean isQueuedToPool = new AtomicBoolean(false);
 
     /**
      * Constructor
@@ -75,15 +80,15 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void enqueue(final E order) {
-        lock.lock();
+        queuelock.lock();
         try {
             if (!queue.contains(order)) {
                 queue.add(order);
             }
-            dispatchOrders();
         } finally {
-            lock.unlock();
+            queuelock.unlock();
         }
+        dispatchOrders();
     }
 
 
@@ -95,10 +100,10 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     @Override
     public E dequeue() {
         E order = null;
-        lock.lock();
+        queuelock.lock();
         try {
             if (!queue.isEmpty()) {
-                if (filter.check(queue.peek())) {
+                if (filter != null && filter.check(queue.peek())) {
                     try {
                         order = queue.take();
                     } catch (InterruptedException e) {
@@ -107,7 +112,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
                 }
             }
         } finally {
-            lock.unlock();
+            queuelock.unlock();
         }
         return order;
     }
@@ -119,7 +124,14 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void dispatchOrders() {
-        dispatcher.execute(this);
+        queuelock.lock();
+        try {
+            if (isQueuedToPool.compareAndSet(false, true)) {
+                dispatcher.execute(this);
+            }
+        } finally {
+            queuelock.unlock();
+        }
     }
 
 
@@ -138,12 +150,22 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
      */
     @Override
     public void run() {
-        Order order = dequeue();
-        while (order != null) {
-            if (orderProcessor != null) {
-                orderProcessor.process(order);
+        while (true) {
+            queuelock.lock();
+            Order order;
+            try {
+                order = dequeue();
+                if (order == null) {
+                    isQueuedToPool.set(false);
+                    break;
+                }
+            } finally {
+                queuelock.unlock();
             }
-            order = dequeue();
+            OrderProcessor op = orderProcessor;
+            if (op != null) {
+                op.process(order);
+            }
         }
     }
 }
