@@ -43,8 +43,7 @@ public final class OrderQueueImpl<E extends Order> implements OrderQueue<E>, Run
     // ** Lock to protect access to queue while modifying queue data */
     private final Lock queuelock = new ReentrantLock();
 
-
-    /**  */
+    /** Boolean to determine if the order getting processed has been queued to the active pool */
     private AtomicBoolean isQueuedToPool = new AtomicBoolean(false);
 
     /**
